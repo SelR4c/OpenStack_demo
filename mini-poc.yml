@@ -40,7 +40,7 @@ parameters:
   ubuntu_flavor:
     type: string
     description: Flavor of the Ubuntu VMs
-    default: "m1.small"
+    default: "m1.tiny"
   ub_nic2_name:
     type: string
     description: Name of the second interface for Ubuntu VM

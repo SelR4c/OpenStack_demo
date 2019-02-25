@@ -1,0 +1,421 @@
+heat_template_version: 2018-03-02 # queens
+## cli deploy
+#$ openstack stack create --template demo.yml demo
+
+description: >
+  Create 4 VMs FortiOS. 1 GW "FGT99" connected to 4 networks.
+  FGT01, FGT02 and FGT03 connected to FGT99 and a web server through
+  two different subnets/interfaces. All GW & web server get a
+  floating IP for management.
+
+parameters:
+  fgtimage:
+    type: string
+    description: Fortios image
+    default: "fgt604"
+  ubimage:
+    type: string
+    description: Ubuntu image
+    default: "Trusty x86_64"
+  mgmt_net:
+    type: string
+    description: My private network
+    default: "mgmt"
+  public_net:
+    type: string
+    description: External network for floating ips
+    default: "ext_net"
+  networks:
+    type: comma_delimited_list
+    label: networks
+    default: "left,middle,right"
+  fgt_names:
+    type: comma_delimited_list
+    default: "FGT99,FGT01,FGT02,FGT03"
+  WebServer_names:
+    type: comma_delimited_list
+    default: "UB1,UB2,UB3"
+  NET01:
+    type: string
+    description: Value of the subnet 01
+    default: "10.100.1.0/24"
+  NET02:
+    type: string
+    description: Value of the subnet 02
+    default: "10.100.2"
+  NET03:
+    type: string
+    description: Value of the subnet 03
+    default: "10.100.3"
+  NETA:
+    type: string
+    description: Value of the subnet A
+    default: "10.10.1"
+  NETB:
+    type: string
+    description: Value of the subnet B
+    default: "10.10.2"
+  NETC:
+    type: string
+    description: Value of the subnet C
+    default: "10.10.3"
+  fgt_flavor:
+    type: string
+    description: Flavor of the VMs
+    default: "m1.small"
+  ubuntu_flavor:
+    type: string
+    description: Flavor of the Ubuntu VMs
+    default: "m1.perso"
+  ub_nic2_name:
+    type: string
+    description: Name of the second interface for Ubuntu VM
+    default: "eth1"
+
+resources:
+  FGT_config:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: ungrouped
+      config: { get_file: ./fgt.conf }
+
+### FLOATING IP ###
+
+  FGT99_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: public_net }
+      port_id: { get_resource: FGT99_mgmt_port }
+
+  FGT01_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: public_net }
+      port_id: { get_resource: FGT01_mgmt_port }
+
+  FGT02_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: public_net }
+      port_id: { get_resource: FGT02_mgmt_port }
+
+  FGT03_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: public_net }
+      port_id: { get_resource: FGT03_mgmt_port }
+
+  UB1_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: public_net }
+      port_id: { get_resource: UB1_mgmt_port }
+
+  UB2_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: public_net }
+      port_id: { get_resource: UB2_mgmt_port }
+
+  UB3_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: public_net }
+      port_id: { get_resource: UB3_mgmt_port }
+
+### SUBNETS ###
+
+  NET01_net:
+    type: OS::Neutron::Net
+    properties:
+      name: "net01"
+
+  NET01_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: NET01_net }
+      cidr: "10.100.1.0/24"
+      gateway_ip: "10.100.1.254"
+      allocation_pools:
+        - start: "10.100.1.3"
+          end:  "10.100.1.250"
+
+  NET02_net:
+    type: OS::Neutron::Net
+    properties:
+      name: "net02"
+
+  NET02_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: NET02_net }
+      cidr: "10.100.2.0/24"
+      gateway_ip: "10.100.2.254"
+      allocation_pools:
+        - start: "10.100.2.3"
+          end:  "10.100.2.250"
+
+  NET03_net:
+    type: OS::Neutron::Net
+    properties:
+      name: "net03"
+
+  NET03_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: NET03_net }
+      cidr: "10.100.3.0/24"
+      gateway_ip: "10.100.3.254"
+      allocation_pools:
+        - start: "10.100.3.3"
+          end:  "10.100.3.250"
+
+  NETA_net:
+    type: OS::Neutron::Net
+    properties:
+      name: "netA"
+
+  NETA_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: NETA_net }
+      cidr: "10.10.1.0/24"
+      gateway_ip: "10.10.1.254"
+      allocation_pools:
+        - start: "10.10.1.3"
+          end:  "10.10.1.250"
+
+  NETB_net:
+    type: OS::Neutron::Net
+    properties:
+      name: "netB"
+
+  NETB_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: NETB_net }
+      cidr: "10.10.2.0/24"
+      gateway_ip: "10.10.2.254"
+      allocation_pools:
+        - start: "10.10.2.3"
+          end:  "10.10.2.250"
+
+  NETC_net:
+    type: OS::Neutron::Net
+    properties:
+      name: "netC"
+
+  NETC_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: NETC_net }
+      cidr: "10.10.3.0/24"
+      gateway_ip: "10.10.3.254"
+      allocation_pools:
+        - start: "10.10.3.3"
+          end:  "10.10.3.250"
+
+### FGT ###
+
+  FGT01_mgmt_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: mgmt_net }
+      security_groups: [ SecG1 ]
+
+  FGT02_mgmt_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: mgmt_net }
+      security_groups: [ SecG1 ]
+
+  FGT03_mgmt_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: mgmt_net }
+      security_groups: [ SecG1 ]
+
+  FGT99_mgmt_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: mgmt_net }
+      security_groups: [ SecG1 ]
+
+### FGT99 ###
+
+  # FGT99_inet_port:
+  #   type: OS::Neutron::Port
+  #   properties:
+  #     network: { get_resource: _net }
+  #     fixed_ips:
+  #       - ip_address: "10.40.40.254"
+
+  FGT99_net01_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: NET01_net }
+      fixed_ips:
+        - ip_address: "10.100.1.254"
+
+  FGT99_net02_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: NET02_net }
+      fixed_ips:
+        - ip_address: "10.100.2.254"
+
+  FGT99_net03_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: NET03_net }
+      fixed_ips:
+        - ip_address: "10.100.3.254"
+
+  FGT99:
+    type: OS::Nova::Server
+    properties:
+      name: FGT99
+      image: { get_param: fgtimage }
+      flavor: { get_param: fgt_flavor }
+      user_data_format: RAW
+      user_data: { get_file: ./fgt.conf }
+      config_drive: True
+      # personality: {"license": { get_attr: [fgt_license, config] }}
+      networks:
+        - port: { get_resource: FGT99_mgmt_port }
+        - port: { get_resource: FGT99_net01_port }
+        - port: { get_resource: FGT99_net02_port }
+        - port: { get_resource: FGT99_net03_port }
+        # - port: { get_resource: FGT99_net_port }
+
+  FGT01_net01_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: NET01_net }
+      fixed_ips:
+        - ip_address: "10.100.1.1"
+
+  FGT01_netA_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: NETA_net }
+      fixed_ips:
+        - ip_address: "10.10.1.254"
+
+  FGT01:
+    type: OS::Nova::Server
+    properties:
+      name: FGT01
+      image: { get_param: fgtimage }
+      flavor: { get_param: fgt_flavor }
+      user_data_format: RAW
+      user_data: { get_file: ./fgt.conf }
+      config_drive: True
+      # personality: {"license": { get_attr: [fgt_license, config] }}
+      networks:
+        - port: { get_resource: FGT01_mgmt_port }
+        - port: { get_resource: FGT01_net01_port }
+        - port: { get_resource: FGT01_netA_port }
+
+### UB MGMT PORT ###
+
+  UB1_mgmt_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: mgmt_net }
+      security_groups: [ SecG1 ]
+
+  UB2_mgmt_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: mgmt_net }
+      security_groups: [ SecG1 ]
+
+  UB3_mgmt_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: mgmt_net }
+      security_groups: [ SecG1 ]
+
+### UB1 ###
+
+  UB1:
+    type: OS::Nova::Server
+    properties:
+      name: UB1
+      image: { get_param: ubimage }
+      flavor: { get_param: ubuntu_flavor }
+      key_name: "default"
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: { get_file: ./ubuntu.conf }
+          params:
+            $INTERFACE: { get_param: ub_nic2_name }
+      networks:
+        - port: { get_resource: UB1_mgmt_port }
+        - subnet:  { get_resource: NET01_subnet }
+        - subnet:  { get_resource: NETA_subnet }
+
+### UB2 ###
+
+  UB2:
+    type: OS::Nova::Server
+    properties:
+      name: UB2
+      image: { get_param: ubimage }
+      flavor: { get_param: ubuntu_flavor }
+      key_name: "default"
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: { get_file: ./ubuntu.conf }
+          params:
+            $INTERFACE: { get_param: ub_nic2_name }
+      networks:
+        - port: { get_resource: UB2_mgmt_port }
+        - subnet:  { get_resource: NET02_subnet }
+        - subnet:  { get_resource: NETB_subnet }
+
+### UB3 ###
+
+  UB3:
+    type: OS::Nova::Server
+    properties:
+      name: UB3
+      image: { get_param: ubimage }
+      flavor: { get_param: ubuntu_flavor }
+      key_name: "default"
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: { get_file: ./ubuntu.conf }
+          params:
+            $INTERFACE: { get_param: ub_nic2_name }
+      networks:
+        - port: { get_resource: UB3_mgmt_port }
+        - subnet:  { get_resource: NET03_subnet }
+        - subnet:  { get_resource: NETC_subnet }
+
+outputs:
+  FGT99-floatingIP:
+    description: IP address to access of the FGT
+    value: { get_attr: [FGT99_floating_ip, floating_ip_address] }
+  FGT01-floatingIP:
+    description: IP address to access of the FGT
+    value: { get_attr: [FGT01_floating_ip, floating_ip_address] }
+  FGT02-floatingIP:
+    description: IP address to access of the FGT
+    value: { get_attr: [FGT02_floating_ip, floating_ip_address] }
+  FGT03-floatingIP:
+    description: IP address to access of the FGT
+    value: { get_attr: [FGT03_floating_ip, floating_ip_address] }
+  UB1-floatingIP:
+    description: IP address to access left ubuntu machine 
+    value: { get_attr: [UB1_floating_ip, floating_ip_address] }
+  UB2-floatingIP:
+    description: IP address to access left ubuntu machine 
+    value: { get_attr: [UB2_floating_ip, floating_ip_address] }
+  UB3-floatingIP:
+    description: IP address to access left ubuntu machine 
+    value: { get_attr: [UB3_floating_ip, floating_ip_address] }
