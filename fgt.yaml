@@ -1,0 +1,74 @@
+heat_template_version: 2018-03-02 # queens
+## cli deploy
+#$ openstack stack create --template demo.yml demo
+
+description: >
+  Scale Up demo infrastructure with a new stack.
+  New stack compose of a FortiOSVM and a Web server.
+
+parameters:
+  fgt_image:
+    type: string
+    description: Fortios image
+    default: "fgt604"
+  mgmt_net:
+    type: string
+    description: My private network
+    default: "mgmt"
+  public_net:
+    type: string
+    description: External network for floating ips
+    default: "ext_net"
+  fgt_flavor:
+    type: string
+    description: Flavor of the VMs
+    default: "m1.small"
+  gateway_name:
+    type: string
+    default: "FGT"
+  networks_id:
+    type: comma_delimited_list
+    description: networks CIDR to connect to FGT
+
+resources:
+  FGT_config:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: ungrouped
+      config: { get_file: ./fgt.conf }
+
+  mgmt_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: mgmt_net }
+      security_groups: [ SecG1 ]
+
+### FLOATING IP ###
+
+  floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: public_net }
+      port_id: { get_resource: mgmt_port }
+
+### FGT instance ###
+
+  FGT:
+    type: OS::Nova::Server
+    properties:
+      name: { get_param: gateway_name }
+      image: { get_param: fgt_image }
+      flavor: { get_param: fgt_flavor }
+      user_data_format: RAW
+      user_data: { get_file: ./fgt.conf }
+      config_drive: True
+      # personality: {"license": { get_attr: [fgt_license, config] }}
+      networks:
+        - port: { get_resource: mgmt_port }
+        - network: { get_param: [ networks_id, 0 ]}
+        - network: { get_param: [ networks_id, 1 ]}
+
+outputs:
+  FGT-floatingIP:
+    description: IP address to access of the FGT
+    value: { get_attr: [floating_ip, floating_ip_address] }

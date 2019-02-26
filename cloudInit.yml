@@ -1,0 +1,85 @@
+heat_template_version: queens
+## cli deploy
+#$ openstack stack create --template demo.yml demo
+
+description: >
+  Create 4 VMs FortiOS. 1 GW "FGT99" connected to 4 networks.
+  FGT01, FGT02 and FGT03 connected to FGT99 and a web server through
+  two different subnets/interfaces. All GW & web server get a
+  floating IP for management.
+
+parameters:
+  mgmt_net:
+    type: string
+    description: My private network
+    default: "mgmt"
+  public_net:
+    type: string
+    description: External network for floating ips
+    default: "ext_net"
+  FGT_count:
+    type: number
+    description: Number of FGT deployed
+    default: 1
+  # NET01:
+  #   type: string
+  #   description: Value of the subnet 1
+  #   default: "10.100.1"
+  # NETA:
+  #   type: string
+  #   description: Value of the subnet A
+  #   default: "10.10.1"
+
+
+resources:
+
+### SUBNETS ###
+
+  NET01_net:
+    type: OS::Neutron::Net
+    properties:
+      name: "net01"
+
+  NET01_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: NET01_net }
+      cidr: "10.100.1.0/24"
+      gateway_ip: "10.100.1.254"
+      allocation_pools:
+        - start: "10.100.1.3"
+          end:  "10.100.1.250"
+
+  NETA_net:
+    type: OS::Neutron::Net
+    properties:
+      name: "netA"
+
+  NETA_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: NETA_net }
+      cidr: "10.10.1.0/24"
+      gateway_ip: "10.10.1.254"
+      allocation_pools:
+        - start: "10.10.1.3"
+          end:  "10.10.1.250"
+
+### FGTs ###
+
+  # Single instance
+  # FGT99:
+  #   type: fgt.yaml
+  #   properties:
+  #     networks_id: [{ get_resource: NET01_net }]
+  #     gateway_name: "FGT99"
+
+  FGTs:
+    type: OS::Heat::ResourceGroup
+    properties:
+      count: { get_param: FGT_count }
+      resource_def:
+        type: fgt.yaml
+        properties:
+          networks_id: [{ get_resource: NET01_net }, { get_resource: NETA_net }]
+          gateway_name: "FGT0%index%"
