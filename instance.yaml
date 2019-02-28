@@ -66,10 +66,11 @@ resources:
       user_data: { get_param: config }
       config_drive: True
       networks:
-        repeat:
-          template:
-            network: <%net_id%>
-          for_each:
-            <%net_id%>: { get_param: net_id_list }
-        # - port: { get_resource: mgmt_port }
+        list_concat:
+          - repeat:
+              template:
+                network: <%net_id%>
+              for_each:
+                <%net_id%>: { get_param: net_id_list }
+          - [ port: { get_resource: mgmt_port } ]
 
