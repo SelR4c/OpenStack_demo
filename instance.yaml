@@ -28,7 +28,7 @@ parameters:
   public_net:
     type: string
     description: External network for floating ips
-    default: "ext_net"
+    default: "public"
   flavor:
     type: string
     description: Flavor of the VMs
@@ -42,7 +42,7 @@ resources:
     type: OS::Neutron::Port
     properties:
       network: { get_param: mgmt_net }
-      security_groups: [ SecG1 ]
+      security_groups: [ mgmt-sec-grp ]
 
 # FLOATING IP
 
@@ -66,11 +66,14 @@ resources:
       user_data: { get_param: config }
       config_drive: True
       networks:
+        # networks needs to be only one list, so we concat two lists
         list_concat:
+          # repeat generate a list
           - repeat:
               template:
                 network: <%net_id%>
               for_each:
                 <%net_id%>: { get_param: net_id_list }
+          # mgmt port in a new list
           - [ port: { get_resource: mgmt_port } ]
 

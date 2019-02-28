@@ -3,7 +3,7 @@ heat_template_version: queens
 #$ openstack stack create -t cloudInit.yml demo --parameter FGT_count=2
 # Utilisation des resourceGroup pour le deploiement des FGT
 # pour update l'intra avec des FGT en +/- =>
-#   openstack stack update --wait --existing demo --parameter FGT_count=3
+#   openstack stack update --wait --existing demo --parameter FGT_count=3 
 
 description: >
   Create 4 VMs FortiOS. 1 GW "FGT99" connected to 4 networks.
@@ -19,7 +19,7 @@ parameters:
   public_net:
     type: string
     description: External network for floating ips
-    default: "ext_net"
+    default: "public"
   FGT_count:
     type: number
     description: Number of FGT deployed
@@ -101,8 +101,8 @@ resources:
       resource_def:
         type: instance.yaml
         properties:
-          image: "Trusty x86_64"
-          flavor: "m1.perso"
+          image: "ubuntu"
+          flavor: "ubuntu"
           net_id_list: [{ get_resource: NETA_net }]
           hostname: "Web_server_%index%"
           config: { get_file: ubuntu.conf }
