@@ -24,6 +24,10 @@ parameters:
     type: number
     description: Number of FGT deployed
     default: 1
+  WS_count:
+    type: number
+    description: Number of Web Server deployed
+    default: 2
   # NET01:
   #   type: string
   #   description: Value of the subnet 1
@@ -83,7 +87,22 @@ resources:
       count: { get_param: FGT_count }
       resource_def:
         # .yml not supported ! .yaml or .template
-        type: fgt.yaml
+        type: instance.yaml
         properties:
-          networks_id: [{ get_resource: NET01_net }, { get_resource: NETA_net }]
-          gateway_name: "FGT%index%"
+          image: "fgt604"
+          net_id_list: [{ get_resource: NET01_net }, { get_resource: NETA_net }]
+          hostname: "FGT_%index%"
+          config: { get_file: fgt.conf }
+
+  Ubuntu:
+    type: OS::Heat::ResourceGroup
+    properties:
+      count: { get_param: WS_count }
+      resource_def:
+        type: instance.yaml
+        properties:
+          image: "Trusty x86_64"
+          flavor: "m1.perso"
+          net_id_list: [{ get_resource: NETA_net }]
+          hostname: "Web_server_%index%"
+          config: { get_file: ubuntu.conf }

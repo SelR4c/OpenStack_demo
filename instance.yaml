@@ -1,0 +1,75 @@
+heat_template_version: 2018-03-02 # queens
+## cli deploy
+#$ openstack stack create --template demo.yml demo
+
+description: >
+  Heat template to create an instance with a list of network
+  to connect to and a floating IP for management.
+
+################## PARAMETERS ##################
+
+parameters:
+  image:
+    type: string
+    description: Instance image name
+  hostname:
+    type: string
+    description: Hostname of the instance
+  net_id_list:
+    type: comma_delimited_list
+    description: networks CIDR to connect to FGT
+  config:
+    type: string
+    description: Custom config for the instance
+  mgmt_net:
+    type: string
+    description: My private network
+    default: "mgmt"
+  public_net:
+    type: string
+    description: External network for floating ips
+    default: "ext_net"
+  flavor:
+    type: string
+    description: Flavor of the VMs
+    default: "m1.small"
+
+################## RESOURCES ##################
+
+resources:
+
+  mgmt_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: mgmt_net }
+      security_groups: [ SecG1 ]
+
+# FLOATING IP
+
+  floating_ip:
+    type: OS::Neutron::FloatingIP
+    depends_on: mgmt_port
+    properties:
+      floating_network: { get_param: public_net }
+      port_id: { get_resource: mgmt_port }
+
+# INSTANCE
+
+  instance:
+    type: OS::Nova::Server
+    depends_on: mgmt_port
+    properties:
+      name: { get_param: hostname }
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      user_data_format: RAW
+      user_data: { get_param: config }
+      config_drive: True
+      networks:
+        repeat:
+          template:
+            network: <%net_id%>
+          for_each:
+            <%net_id%>: { get_param: net_id_list }
+        # - port: { get_resource: mgmt_port }
+
