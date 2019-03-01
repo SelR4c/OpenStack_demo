@@ -1,16 +1,14 @@
 heat_template_version: queens
 ## cli deploy
-#$ openstack stack create -t cloudInit.yml demo --parameter FGT_count=2
+#$ openstack stack create --parameter FGT_count=2 -t cloudInit.yml demo 
 # Utilisation des resourceGroup pour le deploiement des FGT
 # pour update l'intra avec des FGT en +/- =>
-#   openstack stack update --wait --existing demo --parameter FGT_count=3 
+#$ openstack stack update --wait --existing --parameter FGT_count=3 --parameter WS_count=3 demo
 
 description: >
-  Create 4 VMs FortiOS. 1 GW "FGT99" connected to 4 networks.
-  FGT01, FGT02 and FGT03 connected to FGT99 and a web server through
-  two different subnets/interfaces. All GW & web server get a
-  floating IP for management.
+  Description TODO
 
+################## PARAMETERS ##################
 parameters:
   mgmt_net:
     type: string
@@ -20,6 +18,10 @@ parameters:
     type: string
     description: External network for floating ips
     default: "public"
+  ingress_net:
+    type: string
+    description: External network for floating ips
+    default: "Ingress"
   FGT_count:
     type: number
     description: Number of FGT deployed
@@ -28,59 +30,95 @@ parameters:
     type: number
     description: Number of Web Server deployed
     default: 2
-  # NET01:
-  #   type: string
-  #   description: Value of the subnet 1
-  #   default: "10.100.1"
-  # NETA:
-  #   type: string
-  #   description: Value of the subnet A
-  #   default: "10.10.1"
+  Ingress_FGT:
+    type: string
+    description: CIDR Ingress FGT
+    default: "10.2.1"
+  Egress_FGT:
+    type: string
+    description: CIDR Egress FGT
+    default: "10.10.1"
+  Web_Server_CIDR:
+    type: string
+    description: CIDR for Web servers subnet
+    default: "10.100.1"
+  Ingress_subnet_CIDR:
+    type: string
+    description: CIDR for Egress subnet
+    default: "10.1.1"
 
-
+################## RESOURCES ##################
 resources:
 
-### SUBNETS ###
-
-  NET01_net:
+# SUBNETs
+  Ingress_FGT_net:
     type: OS::Neutron::Net
     properties:
-      name: "net01"
+      name: "Ingress FGTs net"
 
-  NET01_subnet:
+  Ingress_FGT_subnet:
     type: OS::Neutron::Subnet
     properties:
-      network_id: { get_resource: NET01_net }
-      cidr: "10.100.1.0/24"
-      gateway_ip: "10.100.1.254"
+      network_id: { get_resource: Ingress_FGT_net }
+      cidr: { list_join: [".", [{ get_param: Ingress_FGT }, "0/24"]] }
+      gateway_ip: { list_join: [".", [{ get_param: Ingress_FGT}, "254"]] }
       allocation_pools:
-        - start: "10.100.1.3"
-          end:  "10.100.1.250"
+        - start: { list_join: [".", [{ get_param: Ingress_FGT}, "3"]] }
+          end: { list_join: [".", [{ get_param: Ingress_FGT}, "250"]] }
 
-  NETA_net:
+  Egress_FGT_net:
     type: OS::Neutron::Net
     properties:
-      name: "netA"
+      name: "Egress FGTs net"
 
-  NETA_subnet:
+  Egress_FGT_subnet:
     type: OS::Neutron::Subnet
     properties:
-      network_id: { get_resource: NETA_net }
-      cidr: "10.10.1.0/24"
-      gateway_ip: "10.10.1.254"
+      network_id: { get_resource: Egress_FGT_net }
+      cidr: { list_join: [".", [{ get_param: Egress_FGT }, "0/24"]] }
+      gateway_ip: null
       allocation_pools:
-        - start: "10.10.1.3"
-          end:  "10.10.1.250"
+        - start: { list_join: [".", [{ get_param: Egress_FGT}, "3"]] }
+          end: { list_join: [".", [{ get_param: Egress_FGT}, "250"]] }
 
-### FGTs ###
+  WS_net:
+    type: OS::Neutron::Net
+    properties:
+      name: "Web server net"
+
+  WS_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: WS_net }
+      cidr: { list_join: [".", [{ get_param: Web_Server_CIDR }, "0/24"]] }
+      gateway_ip: null
+      allocation_pools:
+        - start: { list_join: [".", [{ get_param: Web_Server_CIDR}, "3"]] }
+          end: { list_join: [".", [{ get_param: Web_Server_CIDR}, "250"]] }
+
+# INSTANCES
 
   # Single instance
-  # FGT99:
-  #   type: fgt.yaml
-  #   properties:
-  #     networks_id: [{ get_resource: NET01_net }]
-  #     gateway_name: "FGT99"
+  ADC01:
+    type: instance.yaml
+    properties:
+      net_id_list: [{ get_param: ingress_net }, { get_resource: Ingress_FGT_net }]
+      image: "fortiADC"
+      flavor: "m1.small"
+      hostname: "ADC01"
+      config: { get_file: ./config/fgt.conf }
 
+  # Single instance
+  ADC02:
+    type: instance.yaml
+    properties:
+      net_id_list: [{ get_resource: Egress_FGT_net }, { get_resource: WS_net}]
+      image: "fortiADC"
+      flavor: "ds2G"
+      hostname: "ADC02"
+      config: { get_file: ./config/fgt.conf }
+
+# FGT ResourceGroup
   FGTs:
     type: OS::Heat::ResourceGroup
     properties:
@@ -90,11 +128,14 @@ resources:
         type: instance.yaml
         properties:
           image: "fgt604"
-          net_id_list: [{ get_resource: NET01_net }, { get_resource: NETA_net }]
+          flavor: "m1.amphora"
+          net_id_list: [{ get_resource: Ingress_FGT_net }, { get_resource: Egress_FGT_net }]
           hostname: "FGT_%index%"
-          config: { get_file: fgt.conf }
+          config: { get_file: ./config/fgt.conf }
 
-  Ubuntu:
+
+# UBUNTU ResourceGroup
+  Web_Server:
     type: OS::Heat::ResourceGroup
     properties:
       count: { get_param: WS_count }
@@ -102,7 +143,12 @@ resources:
         type: instance.yaml
         properties:
           image: "ubuntu"
-          flavor: "ubuntu"
-          net_id_list: [{ get_resource: NETA_net }]
+          flavor: "ds512M"
+          net_id_list: [{ get_resource: WS_net }]
           hostname: "Web_server_%index%"
-          config: { get_file: ubuntu.conf }
+          config: { get_file: ./config/ubuntu.conf }
+
+################## OUTPUTS ##################
+outputs:
+  UBs-floatingIP:
+    value: { get_attr: [Web_Server, refs_map, 0, networks, 0] }
