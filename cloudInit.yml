@@ -29,7 +29,7 @@ parameters:
   WS_count:
     type: number
     description: Number of Web Server deployed
-    default: 2
+    default: 1
   Ingress_FGT:
     type: string
     description: CIDR Ingress FGT
@@ -59,6 +59,7 @@ resources:
   Ingress_FGT_subnet:
     type: OS::Neutron::Subnet
     properties:
+      name: "Ingress FGTs subnet"
       network_id: { get_resource: Ingress_FGT_net }
       cidr: { list_join: [".", [{ get_param: Ingress_FGT }, "0/24"]] }
       gateway_ip: { list_join: [".", [{ get_param: Ingress_FGT}, "254"]] }
@@ -74,6 +75,7 @@ resources:
   Egress_FGT_subnet:
     type: OS::Neutron::Subnet
     properties:
+      name: "Egress FGTs subnet"
       network_id: { get_resource: Egress_FGT_net }
       cidr: { list_join: [".", [{ get_param: Egress_FGT }, "0/24"]] }
       gateway_ip: null
@@ -89,6 +91,7 @@ resources:
   WS_subnet:
     type: OS::Neutron::Subnet
     properties:
+      name: "Web server subnet"
       network_id: { get_resource: WS_net }
       cidr: { list_join: [".", [{ get_param: Web_Server_CIDR }, "0/24"]] }
       gateway_ip: null
@@ -102,20 +105,20 @@ resources:
   ADC01:
     type: instance.yaml
     properties:
+      hostname: "ADC01"
       net_id_list: [{ get_param: ingress_net }, { get_resource: Ingress_FGT_net }]
       image: "fortiADC"
       flavor: "m1.small"
-      hostname: "ADC01"
       config: { get_file: ./config/fgt.conf }
 
   # Single instance
   ADC02:
     type: instance.yaml
     properties:
+      hostname: "ADC02"
       net_id_list: [{ get_resource: Egress_FGT_net }, { get_resource: WS_net}]
       image: "fortiADC"
       flavor: "ds2G"
-      hostname: "ADC02"
       config: { get_file: ./config/fgt.conf }
 
 # FGT ResourceGroup
@@ -135,7 +138,7 @@ resources:
 
 
 # UBUNTU ResourceGroup
-  Web_Server:
+  Web_Servers:
     type: OS::Heat::ResourceGroup
     properties:
       count: { get_param: WS_count }
@@ -150,5 +153,25 @@ resources:
 
 ################## OUTPUTS ##################
 outputs:
-  UBs-floatingIP:
-    value: { get_attr: [Web_Server, refs_map, 0, networks, 0] }
+  ADC01:
+    value: ["ADC01", { get_attr: [ADC01, FloatingIP] }]
+  ADC02:
+    value: ["ADC02", { get_attr: [ADC02, FloatingIP] }]
+  FGTs:
+    value: 
+      repeat:
+        template:
+          [<%hostname%>, <%IP%>]
+        for_each:
+          <%IP%>: { get_attr: [FGTs, FloatingIP]}
+          <%hostname%>: { get_attr: [FGTs, Hostname] }
+        permutations: false
+  Web_Servers:
+    value:
+      repeat:
+        template:
+          [<%hostname%>, <%IP%>]
+        for_each:
+          <%IP%>: { get_attr: [Web_Servers, FloatingIP]}
+          <%hostname%>: { get_attr: [Web_Servers, Hostname] }
+        permutations: false

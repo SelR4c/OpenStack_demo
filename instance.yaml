@@ -42,7 +42,7 @@ resources:
     type: OS::Neutron::Port
     properties:
       network: { get_param: mgmt_net }
-      security_groups: [ mgmt-sec-grp ]
+      # security_groups: [ mgmt-sec-grp ]
 
 # FLOATING IP
 
@@ -68,11 +68,17 @@ resources:
       networks:
         # networks needs to be only one list, so we concat two lists
         list_concat:
+          # mgmt port in a new list
+          - [ port: { get_resource: mgmt_port } ]
           # repeat generate a list
           - repeat:
               template:
                 network: <%net_id%>
               for_each:
                 <%net_id%>: { get_param: net_id_list }
-          # mgmt port in a new list
-          - [ port: { get_resource: mgmt_port } ]
+
+outputs:
+  Hostname:
+    value: { get_attr: [instance, name] }
+  FloatingIP:
+    value: { get_attr: [floating_ip, floating_ip_address] }
