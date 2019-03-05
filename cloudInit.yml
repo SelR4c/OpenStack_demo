@@ -102,23 +102,17 @@ resources:
 # INSTANCES
 
   # Single instance
-  ADC01:
+  ADC:
     type: instance.yaml
     properties:
-      hostname: "ADC01"
-      net_id_list: [{ get_param: ingress_net }, { get_resource: Ingress_FGT_net }]
+      hostname: "ADC"
+      net_id_list:
+        - { get_param: ingress_net }
+        - { get_resource: Ingress_FGT_net }
+        - { get_resource: WS_net }
+        - { get_resource: Egress_FGT_net}]
       image: "fortiADC"
-      flavor: "m1.small"
-      config: { get_file: ./config/fgt.conf }
-
-  # Single instance
-  ADC02:
-    type: instance.yaml
-    properties:
-      hostname: "ADC02"
-      net_id_list: [{ get_resource: Egress_FGT_net }, { get_resource: WS_net}]
-      image: "fortiADC"
-      flavor: "ds2G"
+      flavor: "m1.medium"
       config: { get_file: ./config/fgt.conf }
 
 # FGT ResourceGroup
@@ -132,7 +126,9 @@ resources:
         properties:
           image: "fgt604"
           flavor: "m1.amphora"
-          net_id_list: [{ get_resource: Ingress_FGT_net }, { get_resource: Egress_FGT_net }]
+          net_id_list:
+            - { get_resource: Ingress_FGT_net }
+            - { get_resource: Egress_FGT_net }
           hostname: "FGT_%index%"
           config: { get_file: ./config/fgt.conf }
 
@@ -153,10 +149,8 @@ resources:
 
 ################## OUTPUTS ##################
 outputs:
-  ADC01:
-    value: ["ADC01", { get_attr: [ADC01, FloatingIP] }]
-  ADC02:
-    value: ["ADC02", { get_attr: [ADC02, FloatingIP] }]
+  ADC:
+    value: ["ADC", { get_attr: [ADC, FloatingIP] }]
   FGTs:
     value: 
       repeat:
