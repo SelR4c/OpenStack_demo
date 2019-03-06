@@ -110,10 +110,11 @@ resources:
         - { get_param: ingress_net }
         - { get_resource: Ingress_FGT_net }
         - { get_resource: WS_net }
-        - { get_resource: Egress_FGT_net}]
+        - { get_resource: Egress_FGT_net}
       image: "fortiADC"
       flavor: "m1.medium"
       config: { get_file: ./config/fgt.conf }
+      # license_filename: ./licenses/FADC.lic
 
 # FGT ResourceGroup
   FGTs:

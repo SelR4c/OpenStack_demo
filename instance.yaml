@@ -33,6 +33,10 @@ parameters:
     type: string
     description: Flavor of the VMs
     default: "m1.small"
+  license_filename:
+    type: string
+    description: License filename
+    default: ""
 
 ################## RESOURCES ##################
 
@@ -66,7 +70,7 @@ resources:
       user_data: { get_param: config }
       config_drive: True
       networks:
-        # networks needs to be only one list, so we concat two lists
+        # networks must take one list, so we concat two lists
         list_concat:
           # mgmt port in a new list
           - [ port: { get_resource: mgmt_port } ]

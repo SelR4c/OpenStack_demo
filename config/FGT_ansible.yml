@@ -1,20 +1,43 @@
 ---
 - hosts: localhost
   vars:
-    host: "172.24.4.14"
     username: "User1"
     password: "fortinet"
     vdom: "root"
   tasks:
-    - name: Get informations
+    - name: Include IP of FGT in var 'FGT_IP'
+      include_vars:
+        file: fortigate_IP.yaml
+        name: FGT
+    - name: Include licenses filename of var 'licenses'
+      include_vars:
+        file: licenses.yaml
+        name: licenses
+    - name: Get system informations
       fortiosconfig:
         config: "system global"
         action: "get"
-        host:  "{{ host }}"  
+        host:  "{{ item }}"  
         username: "{{ username }}"  
         password: "{{ password }}"
         vdom: "global"
         https: False
         config_parameters:
           name: "global"
+      loop: "{{ FGT.IP }}"
+    - name: Upload licenses
+      fortiosconfig:
+        config: "system vmlicense upload"
+        action: "upload"
+        host: "{{ item.0 }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        vdom:  "global"
+        https: False
+        config_parameters:
+          filename: "{{ item.1 }}"
+      with_together:
+        - "{{ FGT.IP }}"
+        - "{{ licenses.licenses }}"
+      when: item.0 != None
 
