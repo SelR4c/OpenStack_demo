@@ -18,103 +18,124 @@ parameters:
     type: string
     description: External network for floating ips
     default: "public"
-  ingress_net:
+  inet:
     type: string
     description: External network for floating ips
-    default: "Ingress"
+    default: "inet"
   FGT_count:
     type: number
     description: Number of FGT deployed
-    default: 1
+    default: 2
   WS_count:
     type: number
     description: Number of Web Server deployed
     default: 1
   Ingress_FGT:
     type: string
-    description: CIDR Ingress FGT
-    default: "10.2.1"
-  Egress_FGT:
-    type: string
-    description: CIDR Egress FGT
     default: "10.10.1"
+  LAN_CIDR:
+    type: string
+    default: "10.20.1"
   Web_Server_CIDR:
     type: string
     description: CIDR for Web servers subnet
     default: "10.100.1"
-  Ingress_subnet_CIDR:
+  HA_CIDR:
     type: string
-    description: CIDR for Egress subnet
-    default: "10.1.1"
+    description: CIDR for HA subnet
+    default: "1.1.1"
 
 ################## RESOURCES ##################
 resources:
 
 # SUBNETs
-  Ingress_FGT_net:
+  WAN:
     type: OS::Neutron::Net
     properties:
-      name: "Ingress FGTs net"
+      name: "WAN"
 
-  Ingress_FGT_subnet:
+  WAN_subnet:
     type: OS::Neutron::Subnet
     properties:
-      name: "Ingress FGTs subnet"
-      network_id: { get_resource: Ingress_FGT_net }
+      name: "WAN_subnet"
+      network_id: { get_resource: WAN }
       cidr: { list_join: [".", [{ get_param: Ingress_FGT }, "0/24"]] }
       gateway_ip: { list_join: [".", [{ get_param: Ingress_FGT}, "254"]] }
       allocation_pools:
         - start: { list_join: [".", [{ get_param: Ingress_FGT}, "3"]] }
           end: { list_join: [".", [{ get_param: Ingress_FGT}, "250"]] }
 
-  Egress_FGT_net:
+  LAN:
     type: OS::Neutron::Net
     properties:
-      name: "Egress FGTs net"
+      name: "LAN"
 
-  Egress_FGT_subnet:
+  LAN_subnet:
     type: OS::Neutron::Subnet
     properties:
-      name: "Egress FGTs subnet"
-      network_id: { get_resource: Egress_FGT_net }
-      cidr: { list_join: [".", [{ get_param: Egress_FGT }, "0/24"]] }
+      name: "LAN_subnet"
+      network_id: { get_resource: LAN }
+      cidr: { list_join: [".", [{ get_param: LAN_CIDR }, "0/24"]] }
       gateway_ip: null
       allocation_pools:
-        - start: { list_join: [".", [{ get_param: Egress_FGT}, "3"]] }
-          end: { list_join: [".", [{ get_param: Egress_FGT}, "250"]] }
+        - start: { list_join: [".", [{ get_param: LAN_CIDR}, "3"]] }
+          end: { list_join: [".", [{ get_param: LAN_CIDR}, "250"]] }
 
-  WS_net:
+  net01:
     type: OS::Neutron::Net
     properties:
-      name: "Web server net"
+      name: "NET_01"
 
-  WS_subnet:
+  net01_subnet:
     type: OS::Neutron::Subnet
     properties:
-      name: "Web server subnet"
-      network_id: { get_resource: WS_net }
+      name: "NET01_subnet"
+      network_id: { get_resource: net01 }
       cidr: { list_join: [".", [{ get_param: Web_Server_CIDR }, "0/24"]] }
-      gateway_ip: null
+      gateway_ip: 10.100.1.254
       allocation_pools:
         - start: { list_join: [".", [{ get_param: Web_Server_CIDR}, "3"]] }
           end: { list_join: [".", [{ get_param: Web_Server_CIDR}, "250"]] }
 
+  net_ha:
+    type: OS::Neutron::Net
+    properties:
+      name: "net_ha"
+
+  ha_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      name: "HA_subnet"
+      network_id: { get_resource: net_ha }
+      cidr: { list_join: [".", [{ get_param: HA_CIDR }, "0/24"]] }
+      gateway_ip: null
+      enable_dhcp: false
+
 # INSTANCES
 
-  # Single instance
-  ADC:
+# FGT WAN HA mode
+  FGT_WAN:
     type: instance.yaml
     properties:
-      hostname: "ADC"
+      image: "fgt604"
+      flavor: "m1.amphora"
       net_id_list:
-        - { get_param: ingress_net }
-        - { get_resource: Ingress_FGT_net }
-        - { get_resource: WS_net }
-        - { get_resource: Egress_FGT_net}
-      image: "fortiADC"
-      flavor: "m1.medium"
+        - { get_resource: WAN }
+        - { get_param: inet }
+      hostname: "FGT_WAN"
       config: { get_file: ./config/fgt.conf }
-      # license_filename: ./licenses/FADC.lic
+
+# FGT LAN HA mode
+  FGT_LAN:
+    type: instance.yaml
+    properties:
+      image: "fgt604"
+      flavor: "m1.amphora"
+      net_id_list:
+        - { get_resource: LAN }
+        - { get_resource: net01 }
+      hostname: "FGT_LAN"
+      config: { get_file: ./config/fgt.conf }
 
 # FGT ResourceGroup
   FGTs:
@@ -128,11 +149,11 @@ resources:
           image: "fgt604"
           flavor: "m1.amphora"
           net_id_list:
-            - { get_resource: Ingress_FGT_net }
-            - { get_resource: Egress_FGT_net }
+            - { get_resource: WAN }
+            - { get_resource: LAN }
+            - { get_resource: net_ha }
           hostname: "FGT_%index%"
           config: { get_file: ./config/fgt.conf }
-
 
 # UBUNTU ResourceGroup
   Web_Servers:
@@ -142,16 +163,18 @@ resources:
       resource_def:
         type: instance.yaml
         properties:
-          image: "ubuntu"
-          flavor: "ds512M"
-          net_id_list: [{ get_resource: WS_net }]
+          image: "ubuntu_16.04"
+          flavor: "ds1G"
+          net_id_list: [{ get_resource: net01 }]
           hostname: "Web_server_%index%"
           config: { get_file: ./config/ubuntu.conf }
 
 ################## OUTPUTS ##################
 outputs:
-  ADC:
-    value: ["ADC", { get_attr: [ADC, FloatingIP] }]
+  FGT_WAN:
+    value: ["FGT_WAN", { get_attr: [FGT_WAN, FloatingIP] }]
+  FGT_LAN:
+    value: ["FGT_LAN", { get_attr: [FGT_LAN, FloatingIP] }]
   FGTs:
     value: 
       repeat:

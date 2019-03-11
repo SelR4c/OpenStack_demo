@@ -1,13 +1,10 @@
 heat_template_version: 2018-03-02 # queens
-## cli deploy
-#$ openstack stack create --template demo.yml demo
 
 description: >
   Heat template to create an instance with a list of network
   to connect to and a floating IP for management.
 
 ################## PARAMETERS ##################
-
 parameters:
   image:
     type: string
@@ -33,13 +30,12 @@ parameters:
     type: string
     description: Flavor of the VMs
     default: "m1.small"
-  license_filename:
+  keyname:
     type: string
-    description: License filename
-    default: ""
+    description: Keypair to upload to server
+    default: "default"
 
 ################## RESOURCES ##################
-
 resources:
 
   mgmt_port:
@@ -49,7 +45,6 @@ resources:
       # security_groups: [ mgmt-sec-grp ]
 
 # FLOATING IP
-
   floating_ip:
     type: OS::Neutron::FloatingIP
     depends_on: mgmt_port
@@ -58,7 +53,6 @@ resources:
       port_id: { get_resource: mgmt_port }
 
 # INSTANCE
-
   instance:
     type: OS::Nova::Server
     depends_on: mgmt_port
@@ -69,6 +63,7 @@ resources:
       user_data_format: RAW
       user_data: { get_param: config }
       config_drive: True
+      key_name: { get_param: keyname }
       networks:
         # networks must take one list, so we concat two lists
         list_concat:
@@ -81,6 +76,7 @@ resources:
               for_each:
                 <%net_id%>: { get_param: net_id_list }
 
+################## OUTPUTS ##################
 outputs:
   Hostname:
     value: { get_attr: [instance, name] }
