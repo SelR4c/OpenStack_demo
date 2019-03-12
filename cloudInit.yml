@@ -163,11 +163,11 @@ resources:
       resource_def:
         type: instance.yaml
         properties:
-          image: "ubuntu_16.04"
-          flavor: "ds1G"
+          image: "debian"
+          flavor: "ds512M"
           net_id_list: [{ get_resource: net01 }]
           hostname: "Web_server_%index%"
-          config: { get_file: ./config/ubuntu.conf }
+          config: { get_file: ./config/debian.conf }
 
 ################## OUTPUTS ##################
 outputs:
