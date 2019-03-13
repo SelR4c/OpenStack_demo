@@ -17,44 +17,45 @@
     #   fortiosconfig:
     #     config: "system vmlicense upload"
     #     action: "upload"
-    #     host: "{{ FGT.IP.WAN.0 }}"
+    #     host: "{{ FGT.IP.LAN.0 }}"
     #     username: "{{ username }}"
     #     password: "{{ password }}"
     #     vdom:  "global"
     #     https: False
     #     config_parameters:
-    #       filename: "{{ FGT.IP.WAN.1 }}"
+    #       filename: "{{ FGT.IP.LAN.1 }}"
     #   with_together:
-    #     - "{{ FGT.IP.WAN }}"
+    #     - "{{ FGT.IP.LAN }}"
     #     - "{{ licenses.licenses }}"
-    #   when: FGT.IP.WAN.0 != None
+    #   when: FGT.IP.LAN.0 != None
     - name: Get system informations
       fortiosconfig:
         config: "system global"
         action: "get"
-        host:  "{{ FGT.IP.WAN }}"  
+        host:  "{{ FGT.IP.LAN }}"  
         username: "{{ username }}"  
         password: "{{ password }}"
         vdom: "global"
         https: False
         config_parameters:
           name: "global"
-    - name: Set interface port 2
+    - name: Set interface port 3
       fortiosconfig:
         config: "system interface"
         action: "set"
-        host:  "{{ FGT.IP.WAN }}"  
+        host:  "{{ FGT.IP.LAN }}"  
         username: "{{ username }}"  
         password: "{{ password }}"
         vdom: "global"
         https: False
         config_parameters:
-          name: "port2"
+          name: "port3"
           vdom: "root"
-          mode: "dhcp"
+          mode: static
+          ip: "10.100.1.254 255.255.255.0"
           allowaccess: 'ping'
           type: "physical"
-          snmp-index: "2"
+          snmp-index: "3"
           defaultgw: "disable"
           mtu-override: "enable"
           mtu: "1450"
@@ -62,7 +63,7 @@
       fortiosconfig:
         config: "system settings"
         action: "set"
-        host:  "{{ FGT.IP.WAN }}"  
+        host:  "{{ FGT.IP.LAN }}"  
         username: "{{ username }}"  
         password: "{{ password }}"
         vdom: "global"
@@ -74,19 +75,18 @@
       fortiosconfig:
         config: "system zone"
         action: "set"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ FGT.IP.LAN }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
         https: False
         config_parameters:
           name: "MGMT"
-          interface: "port2"
     - name: Create system zone DOWN
       fortiosconfig:
         config: "system zone"
         action: "set"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ FGT.IP.LAN }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
@@ -97,7 +97,7 @@
       fortiosconfig:
         config: "system zone"
         action: "set"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ FGT.IP.LAN }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
@@ -107,7 +107,7 @@
     - name: Set interface zones
       fortiosconfig:
         action: "ssh"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ FGT.IP.LAN }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
@@ -118,10 +118,10 @@
               set interface port1
             next
             edit DOWN
-              set interface port2
+              set interface port3
             next
             edit UP
-              set interface port3
+              set interface port2
             next
           end
 
@@ -129,14 +129,14 @@
       fortiosconfig:
         config: "firewall policy"
         action: "set"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ FGT.IP.LAN }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
         https: False
         config_parameters:
           policyid: "1"
-          name: "WAN to LAN"
+          name: "DOWN to UP"
           action: "accept"
           srcintf: [{"name": "DOWN"}]
           dstintf: [{"name":"UP"}]
@@ -145,19 +145,18 @@
           schedule: "always"
           service: [{"name":"ALL"}]
           fsso: "disable"
-          nat: "enable"
     - name: create firewall policy 2
       fortiosconfig:
         config: "firewall policy"
         action: "set"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ FGT.IP.LAN }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
         https: False
         config_parameters:
           policyid: "2"
-          name: "LAN to WAN"
+          name: "UP to DOWN"
           action: "accept"
           srcintf: [{"name": "UP"}]
           dstintf: [{"name":"DOWN"}]
@@ -166,33 +165,17 @@
           schedule: "always"
           service: [{"name":"ALL"}]
           fsso: "disable"
-    - name: Set static route WAN
+    - name: Set static route
       fortiosconfig:
         config: "router static"
         action: "set"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ FGT.IP.LAN }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
         https: False
         config_parameters:
           seq-num: "1"
-          gateway: "10.0.1.1"
-          distance: "2"
-          priority: 20
-          device: "port3"
-    - name: Set static route MGMT
-      fortiosconfig:
-        config: "router static"
-        action: "set"
-        host: "{{ FGT.IP.WAN }}"
-        username: "{{ username }}"
-        password: "{{ password }}"
-        vdom: "{{ vdom }}"
-        https: False
-        config_parameters:
-          seq-num: "2"
           gateway: "192.168.99.1"
-          distance: "2"
-          priority: 30
+          dst: "100.66.199.0 255.255.255.0"
           device: "port1"

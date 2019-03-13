@@ -4,6 +4,7 @@
     username: "User1"
     password: "fortinet"
     vdom: "root"
+    HA_IP_list: []
   tasks:
     - name: Include IP of FGT in var 'FGT'
       include_vars:
@@ -17,97 +18,153 @@
     #   fortiosconfig:
     #     config: "system vmlicense upload"
     #     action: "upload"
-    #     host: "{{ FGT.IP.WAN.0 }}"
+    #     host: "{{ item.0 }}"
     #     username: "{{ username }}"
     #     password: "{{ password }}"
     #     vdom:  "global"
     #     https: False
     #     config_parameters:
-    #       filename: "{{ FGT.IP.WAN.1 }}"
+    #       filename: "{{ item.1 }}"
     #   with_together:
-    #     - "{{ FGT.IP.WAN }}"
+    #     - "{{ item }}"
     #     - "{{ licenses.licenses }}"
-    #   when: FGT.IP.WAN.0 != None
+    #   when: item.0 != None
     - name: Get system informations
       fortiosconfig:
         config: "system global"
         action: "get"
-        host:  "{{ FGT.IP.WAN }}"  
+        host:  "{{ item }}"  
         username: "{{ username }}"  
         password: "{{ password }}"
         vdom: "global"
         https: False
         config_parameters:
           name: "global"
-    - name: Set interface port 2
+      loop: "{{ FGT.IP.FGTs_HA }}"
+
+    - name: Set interface port 4
       fortiosconfig:
         config: "system interface"
         action: "set"
-        host:  "{{ FGT.IP.WAN }}"  
+        host:  "{{ item }}"  
         username: "{{ username }}"  
         password: "{{ password }}"
         vdom: "global"
         https: False
         config_parameters:
-          name: "port2"
+          name: "port4"
           vdom: "root"
-          mode: "dhcp"
-          allowaccess: 'ping'
+          alias: "HA"
+          mode: static
+          ip: "{{ FGT.CIDR.HA }}.{{ index + 1 }} 255.255.255.0"
           type: "physical"
-          snmp-index: "2"
+          snmp-index: "4"
           defaultgw: "disable"
           mtu-override: "enable"
           mtu: "1450"
-    - name: Set inpection mode flow
+      loop: "{{ FGT.IP.FGTs_HA }}"
+      loop_control:
+        index_var: index
+
+    - name: Set HA port
       fortiosconfig:
-        config: "system settings"
+        config: "system ha"
         action: "set"
-        host:  "{{ FGT.IP.WAN }}"  
+        host:  "{{ item }}"  
         username: "{{ username }}"  
         password: "{{ password }}"
-        vdom: "global"
         https: False
         config_parameters:
-          inspection-mode: "flow"
-          gui-allow-unnamed-policy: "enable"
+          hbdev: "port4 100"
+          session-pickup: "enable"
+          session-pickup-connectionless: "enable"
+          session-pickup-expectation: "enable"
+          override: "disable"
+          priority: "{{ index }}00"
+      loop: "{{ FGT.IP.FGTs_HA }}"
+      loop_control:
+        index_var: index
+
+    # - name: Set cluster
+    #   fortiosconfig:
+    #     config: "system cluster-sync"
+    #     action: "set"
+    #     host:  "{{ item[0] }}"  
+    #     username: "{{ username }}"  
+    #     password: "{{ password }}"
+    #     https: False
+    #     config_parameters:
+
+    #       peerip: "{{ FGT.CIDR.HA }}.{{ item[1] }}"
+    #       syncvd: "root"
+    #   with_nested:
+    #     - "{{ FGT.IP.FGTs_HA }}"
+    #     - [ "1", "2", "3", "4", "5"]
+
+    - name: Set cluster
+      fortiosconfig:
+        action: "ssh"
+        host: "{{ item }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        vdom: "{{ vdom }}"
+        https: False
+        commands: |
+          config system cluster-sync
+            edit 1
+              set peerip 1.1.1.1
+              set syncvd "root"
+            next
+            edit 2
+              set peerip 1.1.1.2
+              set syncvd "root"
+            next
+          end
+      loop: "{{ FGT.IP.FGTs_HA }}"
+
     - name: Create system zone MGMT
       fortiosconfig:
         config: "system zone"
         action: "set"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ item }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
         https: False
         config_parameters:
           name: "MGMT"
-          interface: "port2"
-    - name: Create system zone DOWN
+      loop: "{{ FGT.IP.FGTs_HA }}"
+
+    - name: Create system zone LAN
       fortiosconfig:
         config: "system zone"
         action: "set"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ item }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
         https: False
         config_parameters:
-          name: "DOWN"
-    - name: Create system zone UP
+          name: "LAN"
+      loop: "{{ FGT.IP.FGTs_HA }}"
+
+    - name: Create system zone WAN
       fortiosconfig:
         config: "system zone"
         action: "set"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ item }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
         https: False
         config_parameters:
-          name: "UP"
+          name: "WAN"
+      loop: "{{ FGT.IP.FGTs_HA }}"
+
     - name: Set interface zones
       fortiosconfig:
         action: "ssh"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ item }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
@@ -117,82 +174,71 @@
             edit MGMT
               set interface port1
             next
-            edit DOWN
+            edit WAN
               set interface port2
             next
-            edit UP
+            edit LAN
               set interface port3
             next
           end
+      loop: "{{ FGT.IP.FGTs_HA }}"
 
     - name: create firewall policy 1
       fortiosconfig:
         config: "firewall policy"
         action: "set"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ item }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
         https: False
         config_parameters:
           policyid: "1"
-          name: "WAN to LAN"
+          name: "LAN to WAN"
           action: "accept"
-          srcintf: [{"name": "DOWN"}]
-          dstintf: [{"name":"UP"}]
+          srcintf: [{"name": "LAN"}]
+          dstintf: [{"name":"WAN"}]
           srcaddr: [{"name":"all"}]
           dstaddr: [{"name":"all"}]
           schedule: "always"
           service: [{"name":"ALL"}]
           fsso: "disable"
-          nat: "enable"
+      loop: "{{ FGT.IP.FGTs_HA }}"
+
     - name: create firewall policy 2
       fortiosconfig:
         config: "firewall policy"
         action: "set"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ item }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
         https: False
         config_parameters:
           policyid: "2"
-          name: "LAN to WAN"
+          name: "WAN to LAN"
           action: "accept"
-          srcintf: [{"name": "UP"}]
-          dstintf: [{"name":"DOWN"}]
+          srcintf: [{"name": "WAN"}]
+          dstintf: [{"name":"LAN"}]
           srcaddr: [{"name":"all"}]
           dstaddr: [{"name":"all"}]
           schedule: "always"
           service: [{"name":"ALL"}]
           fsso: "disable"
-    - name: Set static route WAN
+      loop: "{{ FGT.IP.FGTs_HA }}"
+
+    - name: Set static route
       fortiosconfig:
         config: "router static"
         action: "set"
-        host: "{{ FGT.IP.WAN }}"
+        host: "{{ item }}"
         username: "{{ username }}"
         password: "{{ password }}"
         vdom: "{{ vdom }}"
         https: False
         config_parameters:
           seq-num: "1"
-          gateway: "10.0.1.1"
-          distance: "2"
-          priority: 20
-          device: "port3"
-    - name: Set static route MGMT
-      fortiosconfig:
-        config: "router static"
-        action: "set"
-        host: "{{ FGT.IP.WAN }}"
-        username: "{{ username }}"
-        password: "{{ password }}"
-        vdom: "{{ vdom }}"
-        https: False
-        config_parameters:
-          seq-num: "2"
           gateway: "192.168.99.1"
-          distance: "2"
-          priority: 30
+          dst: "100.66.199.0 255.255.255.0"
           device: "port1"
+      loop: "{{ FGT.IP.FGTs_HA }}"

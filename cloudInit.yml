@@ -30,7 +30,7 @@ parameters:
     type: number
     description: Number of Web Server deployed
     default: 1
-  Ingress_FGT:
+  WAN_CIDR:
     type: string
     default: "10.10.1"
   LAN_CIDR:
@@ -59,11 +59,11 @@ resources:
     properties:
       name: "WAN_subnet"
       network_id: { get_resource: WAN }
-      cidr: { list_join: [".", [{ get_param: Ingress_FGT }, "0/24"]] }
-      gateway_ip: { list_join: [".", [{ get_param: Ingress_FGT}, "254"]] }
+      cidr: { list_join: [".", [{ get_param: WAN_CIDR }, "0/24"]] }
+      gateway_ip: { list_join: [".", [{ get_param: WAN_CIDR}, "254"]] }
       allocation_pools:
-        - start: { list_join: [".", [{ get_param: Ingress_FGT}, "3"]] }
-          end: { list_join: [".", [{ get_param: Ingress_FGT}, "250"]] }
+        - start: { list_join: [".", [{ get_param: WAN_CIDR}, "3"]] }
+          end: { list_join: [".", [{ get_param: WAN_CIDR}, "250"]] }
 
   LAN:
     type: OS::Neutron::Net
@@ -193,3 +193,11 @@ outputs:
           <%IP%>: { get_attr: [Web_Servers, FloatingIP]}
           <%hostname%>: { get_attr: [Web_Servers, Hostname] }
         permutations: false
+  WAN_CIDR:
+    value: { get_param: WAN_CIDR }
+  LAN_CIDR:
+    value: { get_param: LAN_CIDR }
+  NET01_CIDR:
+    value: { get_param: Web_Server_CIDR }
+  HA_CIDR:
+    value: { get_param: HA_CIDR }
