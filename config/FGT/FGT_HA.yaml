@@ -29,17 +29,51 @@
     #     - "{{ item }}"
     #     - "{{ licenses.licenses }}"
     #   when: item.0 != None
-    - name: Get system informations
+    # - name: Get system informations
+    #   fortiosconfig:
+    #     config: "system global"
+    #     action: "get"
+    #     host:  "{{ item }}"  
+    #     username: "{{ username }}"  
+    #     password: "{{ password }}"
+    #     vdom: "global"
+    #     https: False
+    #     config_parameters:
+    #       name: "global"
+    #   loop: "{{ FGT.IP.FGTs_HA }}"
+
+    - name: Set interface port 2
       fortiosconfig:
-        config: "system global"
-        action: "get"
+        config: "system interface"
+        action: "set"
         host:  "{{ item }}"  
         username: "{{ username }}"  
         password: "{{ password }}"
         vdom: "global"
         https: False
         config_parameters:
-          name: "global"
+          name: "port2"
+          vdom: "root"
+          type: "physical"
+          defaultgw: "disable"
+          bfd: enable
+      loop: "{{ FGT.IP.FGTs_HA }}"
+
+    - name: Set interface port 3
+      fortiosconfig:
+        config: "system interface"
+        action: "set"
+        host:  "{{ item }}"  
+        username: "{{ username }}"  
+        password: "{{ password }}"
+        vdom: "global"
+        https: False
+        config_parameters:
+          name: "port3"
+          vdom: "root"
+          type: "physical"
+          defaultgw: "disable"
+          bfd: enable
       loop: "{{ FGT.IP.FGTs_HA }}"
 
     - name: Set interface port 4
@@ -66,6 +100,24 @@
       loop_control:
         index_var: index
 
+    - name: Set settings
+      fortiosconfig:
+        config: "system settings"
+        action: "set"
+        host:  "{{ item }}"  
+        username: "{{ username }}"  
+        password: "{{ password }}"
+        vdom: "global"
+        https: False
+        config_parameters:
+          inspection-mode: "flow"
+          gui-allow-unnamed-policy: "enable"
+          bfd: "enable"
+          bfd-desired-min-tx: "10"
+          bfd-required-min-rx: "10"
+          asymroute: "enable"
+      loop: "{{ FGT.IP.FGTs_HA }}"
+
     - name: Set HA port
       fortiosconfig:
         config: "system ha"
@@ -85,22 +137,6 @@
       loop_control:
         index_var: index
 
-    # - name: Set cluster
-    #   fortiosconfig:
-    #     config: "system cluster-sync"
-    #     action: "set"
-    #     host:  "{{ item[0] }}"  
-    #     username: "{{ username }}"  
-    #     password: "{{ password }}"
-    #     https: False
-    #     config_parameters:
-
-    #       peerip: "{{ FGT.CIDR.HA }}.{{ item[1] }}"
-    #       syncvd: "root"
-    #   with_nested:
-    #     - "{{ FGT.IP.FGTs_HA }}"
-    #     - [ "1", "2", "3", "4", "5"]
-
     - name: Set cluster
       fortiosconfig:
         action: "ssh"
@@ -119,6 +155,68 @@
               set peerip 1.1.1.2
               set syncvd "root"
             next
+            edit 3
+              set peerip 1.1.1.3
+              set syncvd "root"
+            next
+            edit 4
+              set peerip 1.1.1.4
+              set syncvd "root"
+            next
+          end
+      loop: "{{ FGT.IP.FGTs_HA }}"
+
+    - name: Config router id 
+      fortiosconfig:
+        config: "router ospf"
+        action: "set"
+        host: "{{ item }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        vdom: "{{ vdom }}"
+        https: False
+        config_parameters:
+          router-id: "10.199.99.{{ index + 1 }}"
+      loop: "{{ FGT.IP.FGTs_HA }}"
+      loop_control:
+        index_var: index
+
+    - name: Config OSPF
+      fortiosconfig:
+        action: "ssh"
+        host: "{{ item }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        vdom: "{{ vdom }}"
+        https: False
+        commands: |
+          config router ospf
+            config area
+              edit 0.0.0.0
+            next
+            end
+            config ospf-interface
+              edit "UP"
+                set interface "port2"
+                set dead-interval 40
+                set hello-interval 10
+                set bfd enable
+              next
+              edit "DOWN"
+                set interface "port3"
+                set dead-interval 40
+                set hello-interval 10
+                set bfd enable
+              next
+            end
+            config network
+              edit 1
+                set prefix 10.10.1.0 255.255.255.0
+              next
+              edit 2
+                set prefix 10.20.1.0 255.255.255.0
+              next
+            end
           end
       loop: "{{ FGT.IP.FGTs_HA }}"
 
@@ -203,6 +301,7 @@
           schedule: "always"
           service: [{"name":"ALL"}]
           fsso: "disable"
+          nat: "disable"
       loop: "{{ FGT.IP.FGTs_HA }}"
 
     - name: create firewall policy 2
@@ -225,6 +324,51 @@
           schedule: "always"
           service: [{"name":"ALL"}]
           fsso: "disable"
+          nat: "disable"
+      loop: "{{ FGT.IP.FGTs_HA }}"
+
+    - name: create firewall policy 3
+      fortiosconfig:
+        config: "firewall policy"
+        action: "set"
+        host: "{{ item }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        vdom: "{{ vdom }}"
+        https: False
+        config_parameters:
+          policyid: "3"
+          action: "accept"
+          srcintf: [{"name": "MGMT"}]
+          dstintf: [{"name":"WAN"}]
+          srcaddr: [{"name":"all"}]
+          dstaddr: [{"name":"all"}]
+          schedule: "always"
+          service: [{"name":"ALL"}]
+          fsso: "disable"
+          nat: "disable"
+      loop: "{{ FGT.IP.FGTs_HA }}"
+
+    - name: create firewall policy 4
+      fortiosconfig:
+        config: "firewall policy"
+        action: "set"
+        host: "{{ item }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        vdom: "{{ vdom }}"
+        https: False
+        config_parameters:
+          policyid: "4"
+          action: "accept"
+          srcintf: [{"name": "WAN"}]
+          dstintf: [{"name":"MGMT"}]
+          srcaddr: [{"name":"all"}]
+          dstaddr: [{"name":"all"}]
+          schedule: "always"
+          service: [{"name":"ALL"}]
+          fsso: "disable"
+          nat: "disable"
       loop: "{{ FGT.IP.FGTs_HA }}"
 
     - name: Set static route

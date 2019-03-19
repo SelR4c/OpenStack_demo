@@ -53,6 +53,7 @@ resources:
     type: OS::Neutron::Net
     properties:
       name: "WAN"
+      port_security_enabled: false
 
   WAN_subnet:
     type: OS::Neutron::Subnet
@@ -69,6 +70,7 @@ resources:
     type: OS::Neutron::Net
     properties:
       name: "LAN"
+      port_security_enabled: false
 
   LAN_subnet:
     type: OS::Neutron::Subnet
@@ -85,6 +87,7 @@ resources:
     type: OS::Neutron::Net
     properties:
       name: "NET_01"
+      port_security_enabled: false
 
   net01_subnet:
     type: OS::Neutron::Subnet
@@ -101,6 +104,7 @@ resources:
     type: OS::Neutron::Net
     properties:
       name: "net_ha"
+      port_security_enabled: false
 
   ha_subnet:
     type: OS::Neutron::Subnet
@@ -118,7 +122,7 @@ resources:
     type: instance.yaml
     properties:
       image: "fgt604"
-      flavor: "m1.amphora"
+      flavor: "m1.fgt"
       net_id_list:
         - { get_resource: WAN }
         - { get_param: inet }
@@ -130,7 +134,7 @@ resources:
     type: instance.yaml
     properties:
       image: "fgt604"
-      flavor: "m1.amphora"
+      flavor: "m1.fgt"
       net_id_list:
         - { get_resource: LAN }
         - { get_resource: net01 }
@@ -143,11 +147,10 @@ resources:
     properties:
       count: { get_param: FGT_count }
       resource_def:
-        # .yml not supported ! .yaml or .template
         type: instance.yaml
         properties:
           image: "fgt604"
-          flavor: "m1.amphora"
+          flavor: "m1.fgt"
           net_id_list:
             - { get_resource: WAN }
             - { get_resource: LAN }
@@ -171,28 +174,28 @@ resources:
 
 ################## OUTPUTS ##################
 outputs:
-  FGT_WAN:
-    value: ["FGT_WAN", { get_attr: [FGT_WAN, FloatingIP] }]
-  FGT_LAN:
-    value: ["FGT_LAN", { get_attr: [FGT_LAN, FloatingIP] }]
+  mgmtIP_FGT_WAN:
+    value: { get_attr: [FGT_WAN, mgmtIP] }
+  mgmtIP_FGT_LAN:
+    value: { get_attr: [FGT_LAN, mgmtIP] }
   FGTs:
     value: 
       repeat:
         template:
           [<%hostname%>, <%IP%>]
         for_each:
-          <%IP%>: { get_attr: [FGTs, FloatingIP]}
+          <%IP%>: { get_attr: [FGTs, mgmtIP]}
           <%hostname%>: { get_attr: [FGTs, Hostname] }
         permutations: false
-  Web_Servers:
-    value:
-      repeat:
-        template:
-          [<%hostname%>, <%IP%>]
-        for_each:
-          <%IP%>: { get_attr: [Web_Servers, FloatingIP]}
-          <%hostname%>: { get_attr: [Web_Servers, Hostname] }
-        permutations: false
+  # Web_Servers:
+  #   value:
+  #     repeat:
+  #       template:
+  #         [<%hostname%>, <%IP%>]
+  #       for_each:
+  #         <%IP%>: { get_attr: [Web_Servers, FloatingIP]}
+  #         <%hostname%>: { get_attr: [Web_Servers, Hostname] }
+  #       permutations: false
   WAN_CIDR:
     value: { get_param: WAN_CIDR }
   LAN_CIDR:
