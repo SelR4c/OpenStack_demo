@@ -1,12 +1,11 @@
 heat_template_version: queens
 ## cli deploy
-#$ openstack stack create --parameter FGT_count=2 -t cloudInit.yml demo 
-# Utilisation des resourceGroup pour le deploiement des FGT
-# pour update l'intra avec des FGT en +/- =>
-#$ openstack stack update --wait --existing --parameter FGT_count=3 --parameter WS_count=3 demo
+#$ openstack stack create <--parameter FGT_count=2> -t cloudInit.yml <stack_name>
+# cli scale-up
+#$ openstack stack update --wait --existing --parameter FGT_count=3 --parameter WS_count=2 <stack_name>
 
 description: >
-  Description TODO
+  
 
 ################## PARAMETERS ##################
 parameters:
@@ -95,7 +94,7 @@ resources:
       name: "NET01_subnet"
       network_id: { get_resource: net01 }
       cidr: { list_join: [".", [{ get_param: Web_Server_CIDR }, "0/24"]] }
-      gateway_ip: 10.100.1.254
+      gateway_ip: { list_join: [".", [{ get_param: Web_Server_CIDR}, "254"]] }
       allocation_pools:
         - start: { list_join: [".", [{ get_param: Web_Server_CIDR}, "3"]] }
           end: { list_join: [".", [{ get_param: Web_Server_CIDR}, "250"]] }
@@ -121,13 +120,14 @@ resources:
   FGT_WAN:
     type: instance.yaml
     properties:
-      image: "fgt604"
+      image: "fgt604" # name of FGT image in openstack
       flavor: "m1.fgt"
       net_id_list:
+        # list of network to connect to
         - { get_resource: WAN }
         - { get_param: inet }
       hostname: "FGT_WAN"
-      config: { get_file: ./config/fgt.conf }
+      config: { get_file: ./config/FGT/fgt.conf } # conf to push on instance. !!!!! relative path !!!!!
 
 # FGT LAN HA mode
   FGT_LAN:
@@ -139,13 +139,14 @@ resources:
         - { get_resource: LAN }
         - { get_resource: net01 }
       hostname: "FGT_LAN"
-      config: { get_file: ./config/fgt.conf }
+      config: { get_file: ./config/FGT/fgt.conf }
 
 # FGT ResourceGroup
+# %index% -> loop index number
   FGTs:
     type: OS::Heat::ResourceGroup
     properties:
-      count: { get_param: FGT_count }
+      count: { get_param: FGT_count } # specified with --parameter FGT_count=
       resource_def:
         type: instance.yaml
         properties:
@@ -156,7 +157,7 @@ resources:
             - { get_resource: LAN }
             - { get_resource: net_ha }
           hostname: "FGT_%index%"
-          config: { get_file: ./config/fgt.conf }
+          config: { get_file: ./config/FGT/fgt.conf }
 
 # UBUNTU ResourceGroup
   Web_Servers:
@@ -170,21 +171,23 @@ resources:
           flavor: "ds512M"
           net_id_list: [{ get_resource: net01 }]
           hostname: "Web_server_%index%"
-          config: { get_file: ./config/debian.conf }
+          config: { get_file: ./config/web_server/debian.conf }
 
 ################## OUTPUTS ##################
 outputs:
   mgmtIP_FGT_WAN:
-    value: { get_attr: [FGT_WAN, mgmtIP] }
+    value: { get_attr: [FGT_WAN, addresses, mgmt, 0, addr] }
   mgmtIP_FGT_LAN:
-    value: { get_attr: [FGT_LAN, mgmtIP] }
+    value: { get_attr: [FGT_LAN, addresses, mgmt, 0, addr] }
+  portWAN:
+    value: { get_attr: [FGT_WAN, addresses, inet, 0, port] }
   FGTs:
     value: 
       repeat:
         template:
           [<%hostname%>, <%IP%>]
         for_each:
-          <%IP%>: { get_attr: [FGTs, mgmtIP]}
+          <%IP%>: { get_attr: [FGTs, addresses, mgmt, 0, addr]}
           <%hostname%>: { get_attr: [FGTs, Hostname] }
         permutations: false
   # Web_Servers:

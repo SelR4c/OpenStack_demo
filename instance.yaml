@@ -1,4 +1,4 @@
-heat_template_version: 2018-03-02 # queens
+heat_template_version: queens
 
 description: >
   Heat template to create an instance with a list of network
@@ -65,7 +65,7 @@ resources:
       user_data: { get_param: config }
       config_drive: True
       key_name: { get_param: keyname }
-      security_groups: []
+      security_groups: [] # no security group
       networks:
         list_concat:
           - [ port: { get_resource: mgmt_port } ]
@@ -79,7 +79,7 @@ resources:
 outputs:
   Hostname:
     value: { get_attr: [instance, name] }
-  mgmtIP:
-    value: { get_attr: [instance, addresses, mgmt, 0, addr] }
+  addresses:
+    value: { get_attr: [instance, addresses] }
   # FloatingIP:
   #   value: { get_attr: [floating_ip, floating_ip_address] }
