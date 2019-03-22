@@ -68,7 +68,6 @@
           bfd-required-min-rx: "10"
           asymroute: "enable"
 
-
     - name: Create system zone MGMT
       fortiosconfig:
         config: "system zone"

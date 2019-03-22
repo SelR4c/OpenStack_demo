@@ -10,6 +10,7 @@
       include_vars:
         file: fortigate_IP.yaml
         name: FGT
+
     # - name: Include licenses filename of var 'licenses'
     #   include_vars:
     #     file: licenses.yaml
@@ -26,21 +27,9 @@
     #     config_parameters:
     #       filename: "{{ item.1 }}"
     #   with_together:
-    #     - "{{ item }}"
+    #     - "{{ FGT.IP.FGTs_HA }}"
     #     - "{{ licenses.licenses }}"
     #   when: item.0 != None
-    # - name: Get system informations
-    #   fortiosconfig:
-    #     config: "system global"
-    #     action: "get"
-    #     host:  "{{ item }}"  
-    #     username: "{{ username }}"  
-    #     password: "{{ password }}"
-    #     vdom: "global"
-    #     https: False
-    #     config_parameters:
-    #       name: "global"
-    #   loop: "{{ FGT.IP.FGTs_HA }}"
 
     - name: Set interface port 2
       fortiosconfig:
@@ -325,64 +314,4 @@
           service: [{"name":"ALL"}]
           fsso: "disable"
           nat: "disable"
-      loop: "{{ FGT.IP.FGTs_HA }}"
-
-    - name: create firewall policy 3
-      fortiosconfig:
-        config: "firewall policy"
-        action: "set"
-        host: "{{ item }}"
-        username: "{{ username }}"
-        password: "{{ password }}"
-        vdom: "{{ vdom }}"
-        https: False
-        config_parameters:
-          policyid: "3"
-          action: "accept"
-          srcintf: [{"name": "MGMT"}]
-          dstintf: [{"name":"WAN"}]
-          srcaddr: [{"name":"all"}]
-          dstaddr: [{"name":"all"}]
-          schedule: "always"
-          service: [{"name":"ALL"}]
-          fsso: "disable"
-          nat: "disable"
-      loop: "{{ FGT.IP.FGTs_HA }}"
-
-    - name: create firewall policy 4
-      fortiosconfig:
-        config: "firewall policy"
-        action: "set"
-        host: "{{ item }}"
-        username: "{{ username }}"
-        password: "{{ password }}"
-        vdom: "{{ vdom }}"
-        https: False
-        config_parameters:
-          policyid: "4"
-          action: "accept"
-          srcintf: [{"name": "WAN"}]
-          dstintf: [{"name":"MGMT"}]
-          srcaddr: [{"name":"all"}]
-          dstaddr: [{"name":"all"}]
-          schedule: "always"
-          service: [{"name":"ALL"}]
-          fsso: "disable"
-          nat: "disable"
-      loop: "{{ FGT.IP.FGTs_HA }}"
-
-    - name: Set static route
-      fortiosconfig:
-        config: "router static"
-        action: "set"
-        host: "{{ item }}"
-        username: "{{ username }}"
-        password: "{{ password }}"
-        vdom: "{{ vdom }}"
-        https: False
-        config_parameters:
-          seq-num: "1"
-          gateway: "192.168.99.1"
-          dst: "100.66.199.0 255.255.255.0"
-          device: "port1"
       loop: "{{ FGT.IP.FGTs_HA }}"

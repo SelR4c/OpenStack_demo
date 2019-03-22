@@ -5,7 +5,11 @@ heat_template_version: queens
 #$ openstack stack update --wait --existing --parameter FGT_count=3 --parameter WS_count=2 <stack_name>
 
 description: >
-  
+  Openstack demo infrastucture for Fortinet SecDays.
+  The template deploys 4 fortigates (FGT), 2 FGT are used in HA
+  2 others FGT are deployed with a resource group between the
+  two first one in parallele to provided security in a High Availability
+
 
 ################## PARAMETERS ##################
 parameters:
@@ -21,6 +25,22 @@ parameters:
     type: string
     description: External network for floating ips
     default: "inet"
+  web_server_img_name:
+    type: string
+    description: Web Server image name in openstack
+    default: "web_server"
+  web_server_flavor:
+    type: string
+    description: Web Server flavor name in openstack
+    default: "ds512M"
+  fortigate_img_name:
+    type: string
+    description: Fortigate image name in openstack
+    default: "fortigateVM_604"
+  fortigate_flavor:
+    type: string
+    description: Fortigate flavor name in openstack
+    default: "m1.fgt"
   FGT_count:
     type: number
     description: Number of FGT deployed
@@ -28,7 +48,7 @@ parameters:
   WS_count:
     type: number
     description: Number of Web Server deployed
-    default: 1
+    default: 2
   WAN_CIDR:
     type: string
     default: "10.10.1"
@@ -120,8 +140,8 @@ resources:
   FGT_WAN:
     type: instance.yaml
     properties:
-      image: "fgt604" # name of FGT image in openstack
-      flavor: "m1.fgt"
+      image: { get_param: fortigate_img_name }
+      flavor: { get_param: fortigate_flavor }
       net_id_list:
         # list of network to connect to
         - { get_resource: WAN }
@@ -133,8 +153,8 @@ resources:
   FGT_LAN:
     type: instance.yaml
     properties:
-      image: "fgt604"
-      flavor: "m1.fgt"
+      image: { get_param: fortigate_img_name }
+      flavor: { get_param: fortigate_flavor }
       net_id_list:
         - { get_resource: LAN }
         - { get_resource: net01 }
@@ -150,8 +170,8 @@ resources:
       resource_def:
         type: instance.yaml
         properties:
-          image: "fgt604"
-          flavor: "m1.fgt"
+          image: { get_param: fortigate_img_name }
+          flavor: { get_param: fortigate_flavor }
           net_id_list:
             - { get_resource: WAN }
             - { get_resource: LAN }
@@ -167,8 +187,8 @@ resources:
       resource_def:
         type: instance.yaml
         properties:
-          image: "debian"
-          flavor: "ds512M"
+          image: { get_param: web_server_img_name }
+          flavor: { get_param: web_server_flavor }
           net_id_list: [{ get_resource: net01 }]
           hostname: "Web_server_%index%"
           config: { get_file: ./config/web_server/debian.conf }
@@ -190,15 +210,15 @@ outputs:
           <%IP%>: { get_attr: [FGTs, addresses, mgmt, 0, addr]}
           <%hostname%>: { get_attr: [FGTs, Hostname] }
         permutations: false
-  # Web_Servers:
-  #   value:
-  #     repeat:
-  #       template:
-  #         [<%hostname%>, <%IP%>]
-  #       for_each:
-  #         <%IP%>: { get_attr: [Web_Servers, FloatingIP]}
-  #         <%hostname%>: { get_attr: [Web_Servers, Hostname] }
-  #       permutations: false
+  IP_WebServers:
+    value:
+      repeat:
+        template:
+          [<%hostname%>, <%IP%>]
+        for_each:
+          <%IP%>: { get_attr: [Web_Servers, addresses, { get_attr: [net01, name] }, 0, addr]}
+          <%hostname%>: { get_attr: [Web_Servers, Hostname] }
+        permutations: false
   WAN_CIDR:
     value: { get_param: WAN_CIDR }
   LAN_CIDR:
