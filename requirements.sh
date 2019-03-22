@@ -16,8 +16,10 @@ cp OpenStack_demo/local.conf ./devstack/local.conf
 
 sudo ./devstack/tools/create-stack-user.sh
 
+sudo su - stack
+
 # needed to run locally (with user stack)
-echo "export ANSIBLE_LIBRARY=$(pwd)/40ansible/library" >> /home/stack/.profile
+echo "export ANSIBLE_LIBRARY=$(pwd)/40ansible/library" >> $HOME/.profile
 
 cd devstack
 git checkout stable/queens # Demo was build and tested with queens only
