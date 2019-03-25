@@ -1,4 +1,12 @@
-#!/bin/sh
+#!/bin/bash
+#
+# Bash script to get fortigate IP in output of the stack
+# $ openstack stack output show --all stack01
+# The script then structure IP in an yaml file to be used with ansible
+#
+# Authors: Charles Prevot
+# Date: 18/03/2019
+#
 
 # name of the stack
 STACK='stack01'

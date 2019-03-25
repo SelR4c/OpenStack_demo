@@ -1,4 +1,9 @@
-#!/bin/sh
+#!/bin/bash
+#
+# Bash script to create SecDays demo in openstack
+# Authors: Charles Prevot
+# Date: 25/03/2019
+#
 
 set -mex
 
@@ -11,9 +16,9 @@ sleep 120 # Wait for VM to boot
 # remove Security Group on fortigate WAN interface
 ./remove_SG.sh
 
-# push configuration on fortigate with ansible
+# push fortigate configuration on fortigate with ansible
 cd ansible
-./get_ip.sh
+./get_ip.sh # get fortigates IP
 ansible-playbook FGT_WAN.yaml
 ansible-playbook FGT_LAN.yaml
 ansible-playbook FGT_HA.yaml
