@@ -25,6 +25,8 @@ if ! valid_ip $IP; then
   exit 1
 fi
 
+echo "export OS_AUTH_URL=http://$IP/identity/v3" > AUTH_URL
+
 cd ..
 # latest ansible version for ubuntu/debian
 sudo apt-get install -y software-properties-common
@@ -34,16 +36,13 @@ sudo apt-get update
 
 sudo apt-get install -y git jq ansible
 
-if [ -z 'devstack' ]; then
+if [ ! -r 'devstack' ]; then
   git clone https://github.com/openstack-dev/devstack.git
 fi
 cp OpenStack_demo/local.conf ./devstack/local.conf
 sed -i "s/^HOST_IP.*/HOST_IP=$IP/" ./devstack/local.conf
 
 sudo ./devstack/tools/create-stack-user.sh
-
-# needed to run locally (with user stack)
-echo "export ANSIBLE_LIBRARY=$(pwd)/40ansible/library" >> /opt/stack/.profile
 
 cd devstack
 git checkout stable/queens # Demo was build and tested with queens only
@@ -54,5 +53,8 @@ cd ..
 # 40ansible
 git clone https://github.com/fortinet-solutions-cse/40ansible.git --depth 1
 sudo pip install fortiosapi
+# needed to run ansible in local for now (see 40ansible development)
+sudo echo "export ANSIBLE_LIBRARY=$(pwd)/40ansible/library" >> "$HOME/.profile"
+sudo echo "export ANSIBLE_LIBRARY=$(pwd)/40ansible/library" >> "/opt/stack/.profile"
 
 exit 0

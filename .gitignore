@@ -1,2 +1,4 @@
 *.retry
 *fortigate_IP.yaml
+AUTH_URL
+demo.rc

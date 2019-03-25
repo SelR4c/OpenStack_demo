@@ -9,12 +9,12 @@ set -mex
 
 STACK_NAME='stack01'
 
-openstack stack create --wait -t cloudInit.yml $STACK_NAME
+openstack stack create --wait -t cloudInit.yaml $STACK_NAME
 
 sleep 120 # Wait for VM to boot
 
 # remove Security Group on fortigate WAN interface
-./remove_SG.sh
+# ./remove_SG.sh
 
 # push fortigate configuration on fortigate with ansible
 cd ansible
