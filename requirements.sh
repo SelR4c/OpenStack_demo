@@ -24,18 +24,18 @@ function valid_ip()
 }
 
 if [ ! -r "$IMG_FOLDER/$WEB_SERVER_IMG_NAME" ]; then
-  >2& echo "Please download a cloud-init web server image"
+  echo "Please download a cloud-init web server image"
   exit 1
 fi
 
 if [ ! -r "$IMG_FOLDER/$FORTIGATE_IMG_NAME" ]; then
-  >2& echo "Please download a fortigate image"
+  echo "Please download a fortigate image"
   exit 1
 fi
 
 read -p "Enter DevStack host IPv4: " -e IP
 if ! valid_ip $IP; then
-  >2& echo "UNVALID IP !"
+  echo "UNVALID IP !"
   exit 1
 fi
 
