@@ -21,6 +21,8 @@ LAN_CIRD='LAN_CIDR'
 NET01_CIRD='NET01_CIDR'
 HA_CIRD='HA_CIDR'
 
+source ../demo.rc
+
 FGT_WAN_IP=$(openstack stack output show -f json $STACK $FGT_WAN | \
   jq '.output_value' | sed -e "s/^\$*//g")
 echo "---\nIP:" > fortigate_IP.yaml
