@@ -2,6 +2,10 @@
 
 set -ex
 
+IMG_FOLDER='./images'
+WEB_SERVER_IMG_NAME='debian.qcow2'
+FORTIGATE_IMG_NAME='fortios604.qcow2'
+
 function valid_ip()
 {
   local  ip=$1
@@ -18,6 +22,14 @@ function valid_ip()
   fi
   return $stat
 }
+
+if [ -r "$IMG_FOLDER/$WEB_SERVER_IMG_NAME" ]
+  echo "Please download a cloud-init web server image"
+fi
+
+if [ -r "$IMG_FOLDER/$FORTIGATE_IMG_NAME" ]
+  echo "Please download a fortigate image"
+fi
 
 read -p "Enter DevStack host IPv4: " -e IP
 if ! valid_ip $IP; then

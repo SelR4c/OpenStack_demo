@@ -9,6 +9,7 @@ set -mex
 
 STACK_NAME='stack01'
 
+source demo.rc
 openstack stack create --wait -t cloudInit.yaml $STACK_NAME
 
 sleep 120 # Wait for VM to boot

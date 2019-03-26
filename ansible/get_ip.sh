@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # Bash script to get fortigate IP in output of the stack
 # $ openstack stack output show --all stack01
