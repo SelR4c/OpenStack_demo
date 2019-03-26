@@ -1,6 +1,7 @@
 #!/bin/bash -ex
 
 # push fortigate configuration on fortigate with ansible
+source demo.rc
 cd ansible
 ./get_ip.sh # get fortigates IP
 ansible-playbook FGT_WAN.yaml

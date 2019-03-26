@@ -7,6 +7,8 @@ required:
 By default, the web server image is named debian.qcow2.
 The image must be cloud-init (sudo apt install cloud-init on debian) & qemu (qcow2) compatible
 For the purpose of the SecDays demo, we used a debian disto with nginx preinstall to save boot/configuration time
+Once download with get_images.sh, guestfish tool was used to modified the image to install nginx
+https://docs.openstack.org/image-guide/modify-images.html
 
 The second image needed is fortiosVM. This can be found here https://info.fortinet.com/files/FortiOS/v6.00/images/build0231/FGT_VM64_KVM-v6-build0231-FORTINET.out.kvm.zip
 By default, image is named fortios604.qcow2

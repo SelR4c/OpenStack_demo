@@ -18,9 +18,9 @@ Download a fortigateVM image in './images' folder and name it 'fortios604.qcow2'
 Download a debian cloud-init image in './images' folder and name it 'debian.qcow2' or change the variable in requirements.sh and install.sh
 
 Run the 3 following scripts in OpenStack_demo folder:
-$ ./requirements.sh
-$ ./install.sh
-$ ./build_stack.sh
+$ ./requirements.sh # install openstack and ansible module for fortigate
+$ ./install.sh      # configure basic infra in openstack - external gateway, management network, etc.
+$ ./build_stack.sh  # build the stack - ONLY THIS SCRIPT WAS PRESENTED DURING SECDAYS
 
 # Requirements
 
