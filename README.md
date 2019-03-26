@@ -55,6 +55,9 @@ Our Devstack host runs in esx and we encounted a strange bug when virtualization
 Script 'build_stack.sh' sleep for 3 min before pushing configuration with ansible.
 This number can be reduce when working with a powerful/dedicated machine.
 
+To delete a stack:
+$ openstack stack delete --wait -y stack01
+
 # Contact
 
 Charles Prevot - cprevot@fortinet.com
