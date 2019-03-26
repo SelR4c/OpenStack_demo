@@ -40,3 +40,7 @@ If playbooks fail, try to run it again with script ./push_config.sh. VMs can tak
 
 Our Devstack host runs in esx and we encounted a strange bug when virtualization options was enabled and VMs in openstack could't boot.
 
+# Contact
+
+Charles Prevot - cprevot@fortinet.com
+Romain Schlumberger - rschlumberger@fortinet.com
