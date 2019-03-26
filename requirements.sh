@@ -23,12 +23,12 @@ function valid_ip()
   return $stat
 }
 
-if [ -r "$IMG_FOLDER/$WEB_SERVER_IMG_NAME" ]; then
+if [ ! -r "$IMG_FOLDER/$WEB_SERVER_IMG_NAME" ]; then
   >2& echo "Please download a cloud-init web server image"
   exit 1
 fi
 
-if [ -r "$IMG_FOLDER/$FORTIGATE_IMG_NAME" ]; then
+if [ ! -r "$IMG_FOLDER/$FORTIGATE_IMG_NAME" ]; then
   >2& echo "Please download a fortigate image"
   exit 1
 fi
