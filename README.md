@@ -58,6 +58,10 @@ This number can be reduce when working with a powerful/dedicated machine.
 To delete a stack:
 $ openstack stack delete --wait -y stack01
 
+During the demo we used Alexa to delete the stack.
+We wrote a lambda fonction in AWS, which connect in reverse SSH to the devstack host,
+and execute the command above.
+
 # Contact
 
 Charles Prevot - cprevot@fortinet.com
